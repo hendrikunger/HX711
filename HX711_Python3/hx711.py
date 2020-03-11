@@ -6,7 +6,7 @@ This file holds HX711 class
 import statistics as stat
 import time
 
-import RPi.GPIO as GPIO
+
 
 
 class HX711:
@@ -15,8 +15,8 @@ class HX711:
     """
 
     def __init__(self,
-                 dout_pin,
-                 pd_sck_pin,
+                 datapin,
+                 clockpin,
                  gain_channel_A=128,
                  select_channel='A'):
         """
@@ -28,19 +28,11 @@ class HX711:
             gain_channel_A(int): Optional, by default value 128. Options (128 || 64)
             select_channel(str): Optional, by default 'A'. Options ('A' || 'B')
 
-        Raises:
-            TypeError: if pd_sck_pin or dout_pin are not int type
         """
-        if (isinstance(dout_pin, int)):
-            if (isinstance(pd_sck_pin, int)):
-                self._pd_sck = pd_sck_pin
-                self._dout = dout_pin
-            else:
-                raise TypeError('pd_sck_pin must be type int. '
-                                'Received pd_sck_pin: {}'.format(pd_sck_pin))
-        else:
-            raise TypeError('dout_pin must be type int. '
-                            'Received dout_pin: {}'.format(dout_pin))
+
+        self._pd_sck = clockpin
+        self._dout = datapin
+
 
         self._gain_channel_A = 0
         self._offset_A_128 = 0  # offset for channel A and gain 128
@@ -57,8 +49,8 @@ class HX711:
         self._debug_mode = False
         self._data_filter = outliers_filter  # default it is used outliers_filter
 
-        GPIO.setup(self._pd_sck, GPIO.OUT)  # pin _pd_sck is output only
-        GPIO.setup(self._dout, GPIO.IN)  # pin _dout is input only
+        #.setup(self._pd_sck, .OUT)  # pin _pd_sck is output only
+        #.setup(self._dout, .IN)  # pin _dout is input only
         self.select_channel(select_channel)
         self.set_gain_A(gain_channel_A)
 
@@ -306,7 +298,7 @@ class HX711:
         Returns: bool True if ready else False when not ready        
         """
         # if DOUT pin is low data is ready for reading
-        if GPIO.input(self._dout) == 0:
+        if self._dout == False:
             return True
         else:
             return False
@@ -326,8 +318,8 @@ class HX711:
         """
         for _ in range(num):
             start_counter = time.perf_counter()
-            GPIO.output(self._pd_sck, True)
-            GPIO.output(self._pd_sck, False)
+            self._pd_sck = True
+            self._pd_sck, False
             end_counter = time.perf_counter()
             # check if hx 711 did not turn off...
             if end_counter - start_counter >= 0.00006:
@@ -351,7 +343,7 @@ class HX711:
         Returns: (bool || int) if it returns False then it is false reading.
             if it returns int then the reading was correct
         """
-        GPIO.output(self._pd_sck, False)  # start by setting the pd_sck to 0
+        self._pd_sck = False  # start by setting the pd_sck to 0
         ready_counter = 0
         while (not self._ready() and ready_counter <= 40):
             time.sleep(0.01)  # sleep for 10 ms because data is not ready
@@ -366,8 +358,8 @@ class HX711:
         for _ in range(24):
             start_counter = time.perf_counter()
             # request next bit from hx 711
-            GPIO.output(self._pd_sck, True)
-            GPIO.output(self._pd_sck, False)
+            self._pd_sck = True
+            self._pd_sck = False
             end_counter = time.perf_counter()
             if end_counter - start_counter >= 0.00006:  # check if the hx 711 did not turn off...
                 # if pd_sck pin is HIGH for 60 us and more than the HX 711 enters power down mode.
@@ -378,7 +370,7 @@ class HX711:
                 return False
             # Shift the bits as they come to data_in variable.
             # Left shift by one bit then bitwise OR with the new bit.
-            data_in = (data_in << 1) | GPIO.input(self._dout)
+            data_in = (data_in << 1) | self._dout
 
         if self._wanted_channel == 'A' and self._gain_channel_A == 128:
             if not self._set_channel_gain(1):  # send only one bit which is 1
@@ -631,15 +623,15 @@ class HX711:
         """
         power down method turns off the hx711.
         """
-        GPIO.output(self._pd_sck, False)
-        GPIO.output(self._pd_sck, True)
+        self._pd_sck = False
+        self._pd_sck = True
         time.sleep(0.01)
 
     def power_up(self):
         """
         power up function turns on the hx711.
         """
-        GPIO.output(self._pd_sck, False)
+        self._pd_sck = False
         time.sleep(0.01)
 
     def reset(self):
